@@ -1,85 +1,57 @@
 import sqlparse
+from sql_dictionary import translations
 
 def translate_sql_query(sql_query):
     parsed = sqlparse.parse(sql_query)[0]
     tokens = list(parsed.flatten())
 
     translation = "This query will "
-    if tokens[0].ttype is sqlparse.tokens.DML and tokens[0].value.upper() == 'SELECT':
-        columns = []
-        table_name = ""
-        order_by_column = ""
-        order_direction = "ascending"  # Default ordering
+    columns = []
+    table_name = ""
+    order_by_column = ""
+    order_direction = "ascending"  # Default ordering
 
-        # Flags to manage different sections of SELECT statement
-        in_select_clause = True
-        in_from_clause = False
-        in_order_by_clause = False
+    for token in tokens:
+        if token.ttype is sqlparse.tokens.DML and token.value.upper() == 'SELECT':
+            columns = []  # Reset columns list for each SELECT statement
+            translation += "select "
 
-        for i, token in enumerate(tokens):
-            if token.ttype is sqlparse.tokens.Keyword:
-                if token.value.upper() == 'FROM':
-                    in_select_clause = False
-                    in_from_clause = True
-                    # Assuming next significant token is table name
-                    table_name = next((t.value for t in tokens[i+1:] if t.ttype is sqlparse.tokens.Name), "")
-                elif token.value.upper() == 'ORDER BY':
-                    in_order_by_clause = True
-                    # Assuming next significant token is column name for ordering
-                    order_by_column = next((t.value for t in tokens[i+1:] if t.ttype is sqlparse.tokens.Name), "")
-                    # Checking the token right after column name for direction
-                    direction_token = next((t for t in tokens[i+2:] if t.ttype is sqlparse.tokens.Keyword), None)
-                    if direction_token and direction_token.value.upper() in ['ASC', 'DESC']:
-                        order_direction = "descending" if direction_token.value.upper() == 'DESC' else "ascending"
+        elif token.ttype is sqlparse.tokens.Wildcard:
+            columns = ["all columns"]  # If wildcard is found, we want all columns
 
-            elif token.ttype is sqlparse.tokens.Wildcard and in_select_clause:
-                columns = ["all columns"]  # Translate '*' to 'all columns'
-                break  # No need to add more columns after '*'
-
-            elif token.ttype is sqlparse.tokens.Name and in_select_clause:
+        elif token.ttype is sqlparse.tokens.Name:
+            if 'from' in translation and 'select' in translation and not table_name:  # Capture the table name
+                table_name = token.value
+            elif 'select' in translation:  # Otherwise, it's likely a column name
                 columns.append(token.value)
 
-        columns_part = ", ".join(columns) if columns else "all columns"
-        translation += f"select {columns_part} from {table_name} table"
-        if order_by_column:
-            translation += f" ordered by {order_by_column} in {order_direction} order"
+        elif token.ttype is sqlparse.tokens.Keyword:
+            keyword = token.value.upper()
+            if keyword == 'FROM':
+                translation += ', '.join(columns) + " from "  # Append columns and FROM clause
 
-    elif tokens[0].ttype is sqlparse.tokens.DML and tokens[0].value.upper() == 'UPDATE':
-        table_name = tokens[1].value
-        set_clauses = []
-        where_clause = ""
-        in_set_clause = False
-        in_where_clause = False
+            elif keyword == 'ORDER BY':
+                order_by_column = tokens[tokens.index(token) + 2].value  # Assuming next significant token is the column name
+                next_token = tokens[tokens.index(token) + 4] if tokens.index(token) + 4 < len(tokens) else None
+                if next_token and next_token.ttype is sqlparse.tokens.Keyword and next_token.value.upper() in ['ASC', 'DESC']:
+                    order_direction = next_token.value.lower()
 
-        for i, token in enumerate(tokens[2:]):  # Skip 'UPDATE' and table_name tokens
-            if token.ttype is sqlparse.tokens.Keyword and token.value.upper() == 'SET':
-                in_set_clause = True
-                in_where_clause = False
-            elif token.ttype is sqlparse.tokens.Keyword and token.value.upper() == 'WHERE':
-                in_set_clause = False
-                in_where_clause = True
-            elif in_set_clause and token.ttype is sqlparse.tokens.Name:
-                column = token.value
-                # Skip to value (assuming format is Name '=' Value)
-                value = tokens[i + 4].value  # +4 to account for column, '=', and any potential whitespace
-                set_clauses.append(f"{column} to {value}")
-            elif in_where_clause:
-                where_clause += token.value + " "
-
-        translation += f"update {table_name} table setting " + ", ".join(set_clauses)
-        if where_clause:
-            translation += " " + where_clause
+    # Append table name, order by column and direction to translation
+    if table_name:
+        translation += table_name + " table"
+    if order_by_column:
+        translation += f" ordered by {order_by_column} {order_direction}"
 
     return translation.strip()
 
 def translate_multiple_queries(sql_queries):
     queries = [query.strip() for query in sql_queries.split(";") if query.strip()]
     translations = []
-    
+
     for query in queries:
         translation = translate_sql_query(query)
         translations.append((query, translation))
-    
+
     return translations
 
 def main():
