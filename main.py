@@ -1,3 +1,6 @@
+#Add gramar
+#Add description 
+
 import sqlparse
 from sql_dictionary import translations
 
