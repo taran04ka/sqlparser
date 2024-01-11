@@ -12,6 +12,8 @@ def translate_sql_query(sql_query):
     order_by_column = ""
     order_direction = "ascending"  # Default ordering
     bracket = False
+    set_keyword = False
+    tempPosition = 0
 
     for token in tokens:
         translation_value = trs.get(token.value.upper(), None)
@@ -48,6 +50,7 @@ def translate_sql_query(sql_query):
             if keyword == 'FROM':
                 translation += ', '.join(columns) + " from "  # Append columns and FROM clause
             if keyword == 'INTO':
+                tempPosition = len(translation)
                 translation += trs[keyword]
 
             elif keyword == 'ORDER BY':
@@ -59,8 +62,18 @@ def translate_sql_query(sql_query):
     # Append table name, order by column and direction to translation
     if table_name:
         translation += table_name + " table"
-    if not bracket and values:
-        translation += " values " + ', '.join(values)
+    if table_name in translation and set_keyword:
+        translation += " by setting "
+    if not bracket and values and columns:
+        for i in range(len(columns)):
+            if i != len(columns) - 1:
+                divider = ", "
+            else:
+                divider = " "
+            colValPair = columns[i] + " value " + values[i] + divider
+            translation = translation[:tempPosition] + colValPair + translation[tempPosition:]
+            tempPosition += len(colValPair)
+
     if order_by_column:
         translation += f" ordered by {order_by_column} {order_direction}"
 
