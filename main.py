@@ -1,4 +1,8 @@
+#Add gramar
+#Add description 
+
 import sqlparse
+from sql_dictionary import translations as trs
 from sql_dictionary import translations as trs
 
 def translate_sql_query(sql_query):
@@ -8,20 +12,29 @@ def translate_sql_query(sql_query):
     translation = "This query will "
     columns = []
     values = []
+    values = []
     table_name = ""
     order_by_column = ""
     order_direction = "ascending"  # Default ordering
     bracket = False
     set_keyword = False
+    tempPosition = 0
 
     for token in tokens:
-        if token.ttype is sqlparse.tokens.DML and token.value.upper() == 'SELECT':
-            columns = []  # Reset columns list for each SELECT statement
+        translation_value = trs.get(token.value.upper(), None)
+        #print(f"{token.value}, type: {token.ttype}, translation: {translation_value}")
+        
+        if token.ttype is sqlparse.tokens.DML:
+            columns = []
             values = []
-            translation += "select "
+            translation += translation_value if translation_value else ""
 
-        elif token.ttype is sqlparse.tokens.Wildcard:
+        if token.ttype is sqlparse.tokens.Wildcard:
             columns = ["all columns"]  # If wildcard is found, we want all columns
+
+        if token.ttype is sqlparse.tokens.Punctuation:
+            if token.value is "(" or token.value is ")":
+                bracket = not bracket
 
         if token.ttype is sqlparse.tokens.Name:
             if ('from' in translation and 'select' in translation) or 'update' in translation and not table_name:  # Capture the table name
@@ -44,6 +57,7 @@ def translate_sql_query(sql_query):
             if keyword == 'FROM':
                 translation += ', '.join(columns) + " from "  # Append columns and FROM clause
             if keyword == 'INTO':
+                tempPosition = len(translation)
                 translation += trs[keyword]
             if keyword == 'SET':
                 set_keyword = True
@@ -59,11 +73,16 @@ def translate_sql_query(sql_query):
         translation += table_name + " table"
     if table_name in translation and set_keyword:
         translation += " by setting "
+        tempPosition = len(translation)
     if not bracket and values and columns:
         for i in range(len(columns)):
-            translation += columns[i] + " value " + values[i]
             if i != len(columns) - 1:
-                translation += ", "
+                divider = ", "
+            else:
+                divider = " "
+            colValPair = columns[i] + " value " + values[i] + divider
+            translation = translation[:tempPosition] + colValPair + translation[tempPosition:]
+            tempPosition += len(colValPair)
 
     if order_by_column:
         translation += f" ordered by {order_by_column} {order_direction}"
@@ -81,6 +100,8 @@ def translate_multiple_queries(sql_queries):
     return translations
 
 def main():
+    # for tr in trs:
+    #     print(f"{tr} : {list(sqlparse.parse(tr)[0].flatten())[0].ttype}")
     try:
         with open("ascii-text-art.txt", "r") as file:
             ascii_art = file.read()
