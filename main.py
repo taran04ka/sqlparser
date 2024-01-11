@@ -3,6 +3,7 @@
 
 import sqlparse
 from sql_dictionary import translations as trs
+from sql_dictionary import translations as trs
 
 def translate_sql_query(sql_query):
     parsed = sqlparse.parse(sql_query)[0]
@@ -10,6 +11,7 @@ def translate_sql_query(sql_query):
 
     translation = "This query will "
     columns = []
+    values = []
     values = []
     table_name = ""
     order_by_column = ""
@@ -35,26 +37,30 @@ def translate_sql_query(sql_query):
                 bracket = not bracket
 
         if token.ttype is sqlparse.tokens.Name:
-            if 'from' in translation and 'select' in translation and not table_name:  # Capture the table name
+            if ('from' in translation and 'select' in translation) or 'update' in translation and not table_name:  # Capture the table name
                 table_name = token.value
             elif 'select' in translation:  # Otherwise, it's likely a column name
                 columns.append(token.value)
-            
+
             if 'insert into' in translation and not table_name and not bracket:
                 table_name = token.value
             elif 'insert into' in translation and bracket:
                 columns.append(token.value)
+            elif 'update' in translation and set_keyword:
+                columns.append(token.value)
 
-        if bracket and (("Token.Literal.String" in str(token.ttype)) or ("Token.Literal.Number" in str(token.ttype))):
+        if ("Token.Literal.String" in str(token.ttype)) or ("Token.Literal.Number" in str(token.ttype)):
             values.append(token.value)
 
-        if token.ttype is sqlparse.tokens.Keyword:
+        elif token.ttype is sqlparse.tokens.Keyword:
             keyword = token.value.upper()
             if keyword == 'FROM':
                 translation += ', '.join(columns) + " from "  # Append columns and FROM clause
             if keyword == 'INTO':
                 tempPosition = len(translation)
                 translation += trs[keyword]
+            if keyword == 'SET':
+                set_keyword = True
 
             elif keyword == 'ORDER BY':
                 order_by_column = tokens[tokens.index(token) + 2].value  # Assuming next significant token is the column name
@@ -67,6 +73,7 @@ def translate_sql_query(sql_query):
         translation += table_name + " table"
     if table_name in translation and set_keyword:
         translation += " by setting "
+        tempPosition = len(translation)
     if not bracket and values and columns:
         for i in range(len(columns)):
             if i != len(columns) - 1:
