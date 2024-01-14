@@ -12,17 +12,20 @@ def translate_sql_query(sql_query):
     translation = "This query will "
     columns = []
     values = []
-    values = []
+    filter_values = []
+    filter_columns = []
+    logic_keywords = []
     table_name = ""
     order_by_column = ""
     order_direction = "ascending"  # Default ordering
     bracket = False
     set_keyword = False
+    where_keyword = False
     tempPosition = 0
 
     for token in tokens:
         translation_value = trs.get(token.value.upper(), None)
-        #print(f"{token.value}, type: {token.ttype}, translation: {translation_value}")
+        print(f"{token.value}, type: {token.ttype}, translation: {translation_value}")
         
         if token.ttype is sqlparse.tokens.DML:
             columns = []
@@ -46,11 +49,16 @@ def translate_sql_query(sql_query):
                 table_name = token.value
             elif 'insert into' in translation and bracket:
                 columns.append(token.value)
-            elif 'update' in translation and set_keyword:
+            elif 'update' in translation and set_keyword and not where_keyword:
                 columns.append(token.value)
-
+            elif 'update' in translation and set_keyword and where_keyword:
+                filter_columns.append(token.value)
+        
         if ("Token.Literal.String" in str(token.ttype)) or ("Token.Literal.Number" in str(token.ttype)):
-            values.append(token.value)
+            if not where_keyword:
+                values.append(token.value)
+            else:
+                filter_values.append(token.value)
 
         elif token.ttype is sqlparse.tokens.Keyword:
             keyword = token.value.upper()
@@ -61,6 +69,12 @@ def translate_sql_query(sql_query):
                 translation += trs[keyword]
             if keyword == 'SET':
                 set_keyword = True
+            if keyword == 'WHERE':
+                where_keyword = True
+            if keyword == 'AND' or keyword == 'OR':
+                logic_keywords.append(token.value)
+            if keyword == 'LIKE' or keyword == 'IN' or keyword == 'NOT':
+                filter_values.append(token.value)
 
             elif keyword == 'ORDER BY':
                 order_by_column = tokens[tokens.index(token) + 2].value  # Assuming next significant token is the column name
@@ -83,6 +97,21 @@ def translate_sql_query(sql_query):
             colValPair = columns[i] + " value " + values[i] + divider
             translation = translation[:tempPosition] + colValPair + translation[tempPosition:]
             tempPosition += len(colValPair)
+        if where_keyword:
+            translation += 'where '
+            i = 0
+            j = 0
+            while i < len(filter_values):
+                translation += filter_columns[j] + ' value is '
+                print(filter_columns[j])
+                if filter_values[i].upper() == 'LIKE' or filter_values[i].upper() == 'IN' or filter_values[i].upper() == 'NOT':
+                    translation += trs[filter_values[i].upper()] + ' '
+                    i += 1
+                translation += filter_values[i] + ' '
+                i += 1
+                if logic_keywords and j < len(logic_keywords):
+                    translation += trs[logic_keywords[j].upper()]
+                j += 1
 
     if order_by_column:
         translation += f" ordered by {order_by_column} {order_direction}"
