@@ -51,7 +51,8 @@ def translate_sql_query(sql_query):
                 columns.append(token.value)
             elif 'update' in translation and set_keyword and not where_keyword:
                 columns.append(token.value)
-            elif 'update' in translation and set_keyword and where_keyword:
+            
+            if ('update' in translation or 'select' in translation) and where_keyword:
                 filter_columns.append(token.value)
         
         if ("Token.Literal.String" in str(token.ttype)) or ("Token.Literal.Number" in str(token.ttype)):
@@ -84,9 +85,9 @@ def translate_sql_query(sql_query):
 
     # Append table name, order by column and direction to translation
     if table_name:
-        translation += table_name + " table"
+        translation += table_name + " table "
     if table_name in translation and set_keyword:
-        translation += " by setting "
+        translation += "by setting "
         tempPosition = len(translation)
     if not bracket and values and columns:
         for i in range(len(columns)):
@@ -97,21 +98,21 @@ def translate_sql_query(sql_query):
             colValPair = columns[i] + " value " + values[i] + divider
             translation = translation[:tempPosition] + colValPair + translation[tempPosition:]
             tempPosition += len(colValPair)
-        if where_keyword:
-            translation += 'where '
-            i = 0
-            j = 0
-            while i < len(filter_values):
-                translation += filter_columns[j] + ' value is '
-                print(filter_columns[j])
-                if filter_values[i].upper() == 'LIKE' or filter_values[i].upper() == 'IN' or filter_values[i].upper() == 'NOT':
-                    translation += trs[filter_values[i].upper()] + ' '
-                    i += 1
-                translation += filter_values[i] + ' '
+    if where_keyword:
+        translation += 'where '
+        i = 0
+        j = 0
+        while i < len(filter_values):
+            translation += filter_columns[j] + ' value is '
+            print(filter_columns[j])
+            if filter_values[i].upper() == 'LIKE' or filter_values[i].upper() == 'IN' or filter_values[i].upper() == 'NOT':
+                translation += trs[filter_values[i].upper()] + ' '
                 i += 1
-                if logic_keywords and j < len(logic_keywords):
-                    translation += trs[logic_keywords[j].upper()]
-                j += 1
+            translation += filter_values[i] + ' '
+            i += 1
+            if logic_keywords and j < len(logic_keywords):
+                translation += trs[logic_keywords[j].upper()]
+            j += 1
 
     if order_by_column:
         translation += f" ordered by {order_by_column} {order_direction}"
