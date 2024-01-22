@@ -1,8 +1,4 @@
-#Add gramar
-#Add description 
-
 import sqlparse
-from sql_dictionary import translations as trs
 from sql_dictionary import translations as trs
 
 def translate_sql_query(sql_query):
@@ -26,7 +22,6 @@ def translate_sql_query(sql_query):
 
     for token in tokens:
         translation_value = trs.get(token.value.upper(), None)
-        print(f"{token.value}, type: {token.ttype}, translation: {translation_value}")
         
         if token.ttype is sqlparse.tokens.DML:
             columns = []

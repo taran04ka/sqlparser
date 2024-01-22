@@ -89,5 +89,14 @@ Here are some example SQL queries and their corresponding translations:
 - SQL Query: `SELECT * FROM clients`
 - Translation: `This query will select all columns from clients table`
 
-- SQL Query: `INSERT INTO employees VALUES ('John', 'Doe', 'Manager')`
-- Translation: `This query will insert values into employees table`
+- SQL Query: `INSERT INTO books (pages, author) VALUES (1000, "hello")`
+- Translation: `This query will insert pages value 1000, author value "hello" into books table`
+
+- SQL Query: `SELECT pages, name FROM books WHERE pages = 1000 AND author = "hello"`
+- Translation: `This query will select pages, name from author table where pages value is 1000 and author value is "hello"`
+
+- SQL Query: `UPDATE books SET pages = 2137 WHERE author = "hello"`
+- Translation: `This query will update books table by setting pages value 2137 where author value is "hello"`
+
+- SQL Query: `DELETE books WHERE pages = 1000 OR author = 'hello'`
+- Translation: `This query will delete rows where pages value is 1000 or author value is 'hello'`
