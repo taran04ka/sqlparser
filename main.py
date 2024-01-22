@@ -32,7 +32,7 @@ def translate_sql_query(sql_query):
             columns = ["all columns"]  # If wildcard is found, we want all columns
 
         if token.ttype is sqlparse.tokens.Punctuation:
-            if token.value is "(" or token.value is ")":
+            if token.value == "(" or token.value == ")":
                 bracket = not bracket
 
         if token.ttype is sqlparse.tokens.Name:
