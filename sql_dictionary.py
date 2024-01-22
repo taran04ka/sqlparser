@@ -11,7 +11,7 @@ translations = {
     "VALUES": "values ",
     "UPDATE": "update ",
     "SET": "set ",
-    "DELETE": "delete ",
+    "DELETE": "delete rows",
     "ORDER BY": "ordered by ",
     "GROUP BY": "grouped by ",
     "ASC": "ascending ",

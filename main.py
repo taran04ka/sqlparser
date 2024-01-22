@@ -21,6 +21,7 @@ def translate_sql_query(sql_query):
     bracket = False
     set_keyword = False
     where_keyword = False
+    limit_statement = ""
     tempPosition = 0
 
     for token in tokens:
@@ -40,7 +41,7 @@ def translate_sql_query(sql_query):
                 bracket = not bracket
 
         if token.ttype is sqlparse.tokens.Name:
-            if ('from' in translation and 'select' in translation) or 'update' in translation and not table_name:  # Capture the table name
+            if ('from' in translation and 'select' in translation) or ('from' in translation and 'delete' in translation) or 'update' in translation and not table_name:  # Capture the table name
                 table_name = token.value
             elif 'select' in translation:  # Otherwise, it's likely a column name
                 columns.append(token.value)
@@ -52,12 +53,14 @@ def translate_sql_query(sql_query):
             elif 'update' in translation and set_keyword and not where_keyword:
                 columns.append(token.value)
             
-            if ('update' in translation or 'select' in translation) and where_keyword:
+            if where_keyword:
                 filter_columns.append(token.value)
         
         if ("Token.Literal.String" in str(token.ttype)) or ("Token.Literal.Number" in str(token.ttype)):
             if not where_keyword:
                 values.append(token.value)
+            elif limit_statement:
+                limit_statement += token.value + ' values '
             else:
                 filter_values.append(token.value)
 
@@ -76,6 +79,8 @@ def translate_sql_query(sql_query):
                 logic_keywords.append(token.value)
             if keyword == 'LIKE' or keyword == 'IN' or keyword == 'NOT':
                 filter_values.append(token.value)
+            if keyword == 'LIMIT':
+                limit_statement += 'and ' + trs[keyword]
 
             elif keyword == 'ORDER BY':
                 order_by_column = tokens[tokens.index(token) + 2].value  # Assuming next significant token is the column name
@@ -102,9 +107,8 @@ def translate_sql_query(sql_query):
         translation += 'where '
         i = 0
         j = 0
-        while i < len(filter_values):
+        while j < len(filter_columns):
             translation += filter_columns[j] + ' value is '
-            print(filter_columns[j])
             if filter_values[i].upper() == 'LIKE' or filter_values[i].upper() == 'IN' or filter_values[i].upper() == 'NOT':
                 translation += trs[filter_values[i].upper()] + ' '
                 i += 1
@@ -113,9 +117,10 @@ def translate_sql_query(sql_query):
             if logic_keywords and j < len(logic_keywords):
                 translation += trs[logic_keywords[j].upper()]
             j += 1
-
     if order_by_column:
         translation += f" ordered by {order_by_column} {order_direction}"
+    if limit_statement:
+        translation += limit_statement
 
     return translation.strip()
 
