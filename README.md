@@ -77,7 +77,7 @@ The following is the formal grammar used by the translator:
 
 To run the program, follow these steps:
 
-1. Ensure Python is installed on your system.
+1. Ensure Python 3.8.10 and sqlparse library are installed on your system.
 2. Navigate to the directory containing the script.
 3. Run the script using the command: `python3 main.py`
 4. Enter SQL queries as prompted.
