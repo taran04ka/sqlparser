@@ -130,8 +130,6 @@ def translate_multiple_queries(sql_queries):
     return translations
 
 def main():
-    # for tr in trs:
-    #     print(f"{tr} : {list(sqlparse.parse(tr)[0].flatten())[0].ttype}")
     try:
         with open("ascii-text-art.txt", "r") as file:
             ascii_art = file.read()
